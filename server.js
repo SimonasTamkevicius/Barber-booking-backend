@@ -82,6 +82,7 @@ const barberSchema = {
 }
 
 const serviceSchema = {
+    barberID: String,
     title: String,
     length: String,
     description: String,
@@ -206,6 +207,22 @@ app.post("/barbers", upload.single("image"), async (req, res) => {
     }
 })
 
+app.get("/service", async (req, res) => {
+    try{
+        const services = await Service.find({barberID: req.query._id});
+        if (services) {
+            res.status(201).json(services)
+        } else {
+            res.status(500).json({message: "No services found."})
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).json({message: "Error getting services."})
+    }
+
+})
+
 app.post("/service", async(req, res) => {
     try {
         const foundService = await Service.findOne({title: req.body.title}).exec();
@@ -217,7 +234,8 @@ app.post("/service", async(req, res) => {
             title: req.body.title,
             description: req.body.description,
             price: parseFloat(req.body.price),
-            length: req.body.length
+            length: req.body.length,
+            barberID: req.body.barberID
         })
         await service.save();
         res.status(201).json({message: "Service created successfully.", _id: service._id, title: service.title});
