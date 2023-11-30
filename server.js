@@ -78,19 +78,37 @@ const barberSchema = {
     email: String,
     password: String,
     imageURL: String,
-    role: String
+    role: String,
+    workWeekends: String,
+    openingHour: Number,
+    closingHour: Number
 }
 
 const serviceSchema = {
     barberID: String,
     title: String,
-    length: String,
+    length: Number,
     description: String,
     price: Number,
 }
 
+const appointmentSchema = {
+    barberID: String,
+    customerFName: String,
+    customerLName: String,
+    customerEmail: String,
+    customerPhone: Number,
+    serviceID: String,
+    serviceTitle: String,
+    serviceLength: Number,
+    servicePrice: Number,
+    date: String,
+    time: Number,
+}
+
 const Barber = new mongoose.model("Barber", barberSchema);
 const Service = new mongoose.model("Services", serviceSchema);
+const Appointment = new mongoose.model("Appointment", appointmentSchema);
 
 app.get("/barbers", async (req, res) => {
     try{
@@ -131,7 +149,10 @@ app.post("/login", async(req, res) => {
                   _id: foundBarber._id,
                   fName: foundBarber.fName,
                   lName: foundBarber.lName,
-                  email: foundBarber.email
+                  email: foundBarber.email,
+                  workWeekends: foundBarber.workWeekends,
+                  openingHour: foundBarber.openingHour,
+                  closingHour: foundBarber.closingHour
                 });
             } else {
                 res.status(403).json({message: "Invalid credentials."})
@@ -178,7 +199,10 @@ app.post("/barbers", upload.single("image"), async (req, res) => {
             email: req.body.email.toLowerCase(),
             password: hash,
             imageURL: url,
-            role: "Barber"
+            role: "Barber",
+            workWeekends: req.body.workWeekends,
+            openingHour: req.body.openingHour,
+            closingHour: req.body.closingHour
         })
 
         await barber.save();
@@ -198,12 +222,31 @@ app.post("/barbers", upload.single("image"), async (req, res) => {
             _id: barber._id,
             fName: barber.fName,
             lName: barber.lName,
-            email: barber.email
+            email: barber.email,
+            workWeekends: barber.workWeekends,
+            openingHour: barber.openingHour,
+            closingHour: barber.closingHour
         });
 
     } catch (error) {
         console.log(error);
         res.status(500).json({message: "Unable to add barber."})
+    }
+})
+
+app.delete("/barbers", async (req, res) => {
+    try{
+        const deletedBarber = await Barber.deleteOne({_id: req.body.barberId}).exec();
+        if (deletedBarber) {
+            res.status(200).json({message: "Successfully deleted the barber."});
+        }
+        else {
+            res.status(500).json({message: "Barber could not be found."})
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).json(err);
     }
 })
 
@@ -225,7 +268,7 @@ app.get("/service", async (req, res) => {
 
 app.post("/service", async(req, res) => {
     try {
-        const foundService = await Service.findOne({title: req.body.title}).exec();
+        const foundService = await Service.findOne({title: req.body.title, barberID: req.body.barberID}).exec();
         if (foundService) {
             return res.status(409).json({message: "A service with the same title already exists."});
         }
@@ -233,8 +276,8 @@ app.post("/service", async(req, res) => {
         const service = new Service ({
             title: req.body.title,
             description: req.body.description,
-            price: parseFloat(req.body.price),
-            length: req.body.length,
+            price: req.body.price,
+            length: 1,
             barberID: req.body.barberID
         })
         await service.save();
@@ -242,9 +285,87 @@ app.post("/service", async(req, res) => {
     }
     catch (err) {
         console.log(err);
-        res.status(500).json({message: "An error occured while trying to find a service with the same title as that"});
+        res.status(500).json(err);
     }
 })
+
+app.delete("/service", async (req, res) => {
+    try {
+        const deletedService = await Service.deleteOne({_id: req.body.serviceID}).exec()
+
+        if (deletedService) {
+            res.status(200).json({message: "Successfully deleted the service."});
+        }
+        else {
+            res.status(500).json({message: "Service could not be found."})
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).json(err);
+    }
+})
+
+app.get("/appointments", async (req, res) => {
+    try {
+        const foundAppointments = await Appointment.find({barberID: req.query.barberId}).exec();
+        if (foundAppointments) {
+            res.status(200).json(foundAppointments);
+        }
+        else {
+            res.status(500).json({message: "No appointments found."})
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).json(err);
+    }
+})
+
+app.post("/appointments", async (req, res) => {
+    try {
+        const bookedAppointment = await Appointment.findOne ({barberID: req.body.barberID, date: req.body.date, time: req.body.time}).exec();
+        if (bookedAppointment) {
+            return;
+        }
+
+        const appointment = new Appointment ({
+            barberID: req.body.barberID,
+            customerFName: req.body.customerFName,
+            customerLName: req.body.customerLName,
+            customerEmail: req.body.customerEmail,
+            customerPhone: req.body.customerPhone,
+            serviceID: req.body.serviceID,
+            serviceTitle: req.body.serviceTitle,
+            serviceLength: req.body.serviceLength,
+            servicePrice: req.body.servicePrice,
+            date: req.body.date,
+            time: req.body.time,
+        });
+
+        await appointment.save();
+        res.status(200).json({message: "Successfully booked appointment!"});
+    }
+    catch (err) {
+        console.log(err);
+    }
+})
+
+app.delete("/appointments/", async (req, res) => {
+    try {
+        let deleteAppointment = await Appointment.findByIdAndDelete({_id: req.body.appointmentId}).exec()
+        if (deleteAppointment) {
+            res.status(200).json({message: "Successfully deleted the appointment."});
+        }
+        else {
+            res.status(500).json({message: "Appointment could not be found."})
+        }
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).json(err);
+    }
+});
 
 
 connectDB().then(() => {
