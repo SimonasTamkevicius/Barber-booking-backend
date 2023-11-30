@@ -10,7 +10,6 @@ import jwt from "jsonwebtoken";
 import {
     S3Client,
     PutObjectCommand,
-    DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 dotenv.config();
 
@@ -237,6 +236,7 @@ app.post("/barbers", upload.single("image"), async (req, res) => {
 app.delete("/barbers", async (req, res) => {
     try{
         const deletedBarber = await Barber.deleteOne({_id: req.body.barberId}).exec();
+
         if (deletedBarber) {
             res.status(200).json({message: "Successfully deleted the barber."});
         }
