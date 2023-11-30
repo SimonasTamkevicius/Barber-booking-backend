@@ -64,7 +64,7 @@ const storage = multer.memoryStorage({
 const upload = multer({ storage: storage });
 
 const corsOptions = {
-    origin: ["http://localhost:3000"],
+    origin: ["http://localhost:3000", "https://barber-booking-orpin.vercel.app"],
     credentials: true,
 };
   
